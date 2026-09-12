@@ -9,23 +9,53 @@ public class Unit : MonoBehaviour
 
 
     public static event EventHandler OnAnyActionPointsChanged;
+    public static event EventHandler OnAnyUnitSpawned;
+    public static event EventHandler OnAnyUnitDead;
+
 
     [SerializeField] private bool isEnemy;
 
+
     private GridPosition gridPosition;
-
-    private MoveAction moveAction;
     private HealthSystem healthSystem;
+    private MoveAction moveAction;
     private SpinAction spinAction;
+    private ShootAction shootAction;
     private BaseAction[] baseActionArray;
-
     private int actionPoints = ACTION_POINTS_MAX;
+
     private void Awake()
     {
         healthSystem = GetComponent<HealthSystem>();
         moveAction = GetComponent<MoveAction>();
         spinAction = GetComponent<SpinAction>();
+        shootAction = GetComponent<ShootAction>();
         baseActionArray = GetComponents<BaseAction>();
+    }
+
+    private void Start()
+    {
+        gridPosition = LevelGrid.Instance.GetGridPosition(transform.position);
+        LevelGrid.Instance.AddUnitAtGridPosition(gridPosition, this);
+
+        TurnSystem.Instance.OnTurnChanged += TurnSystem_OnTurnChanged;
+
+        healthSystem.OnDead += HealthSystem_OnDead;
+
+        OnAnyUnitSpawned?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void Update()
+    {
+        GridPosition newGridPosition = LevelGrid.Instance.GetGridPosition(transform.position);
+        if (newGridPosition != gridPosition)
+        {
+            // Unit changed Grid Position
+            GridPosition oldGridPosition = gridPosition;
+            gridPosition = newGridPosition;
+
+            LevelGrid.Instance.UnitMovedGridPosition(this, oldGridPosition, newGridPosition);
+        }
     }
 
     public MoveAction GetMoveAction()
@@ -38,31 +68,12 @@ public class Unit : MonoBehaviour
         return spinAction;
     }
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    private void Start()
+    public ShootAction GetShootAction()
     {
-         gridPosition = LevelGrid.Instance.GetGridPosition(transform.position);
-        LevelGrid.Instance.AddUnitAtGridPosition(gridPosition, this);
-        TurnSystem.Instance.OnTurnChanged += TurnSystem_OnTurnChanged;
-        healthSystem.OnDead += HealthSystem_OnDead;
+        return shootAction;
     }
 
-    // Update is called once per frame
-    private void Update()
-    {
-
-        GridPosition newGridPosition = LevelGrid.Instance.GetGridPosition(transform.position);
-        if(newGridPosition != gridPosition)
-        {
-            
-            LevelGrid.Instance.UnitMovedGridPosition(this, gridPosition, newGridPosition);
-            gridPosition = newGridPosition;
-        }
-
-     
-    }
-
-     public GridPosition GetGridPosition()
+    public GridPosition GetGridPosition()
     {
         return gridPosition;
     }
@@ -103,6 +114,7 @@ public class Unit : MonoBehaviour
     private void SpendActionPoints(int amount)
     {
         actionPoints -= amount;
+
         OnAnyActionPointsChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -111,7 +123,7 @@ public class Unit : MonoBehaviour
         return actionPoints;
     }
 
-   private void TurnSystem_OnTurnChanged(object sender, EventArgs e)
+    private void TurnSystem_OnTurnChanged(object sender, EventArgs e)
     {
         if ((IsEnemy() && !TurnSystem.Instance.IsPlayerTurn()) ||
             (!IsEnemy() && TurnSystem.Instance.IsPlayerTurn()))
@@ -137,8 +149,13 @@ public class Unit : MonoBehaviour
         LevelGrid.Instance.RemoveUnitAtGridPosition(gridPosition, this);
 
         Destroy(gameObject);
+
+        OnAnyUnitDead?.Invoke(this, EventArgs.Empty);
     }
 
-    
+    public float GetHealthNormalized()
+    {
+        return healthSystem.GetHealthNormalized();
+    }
 
 }

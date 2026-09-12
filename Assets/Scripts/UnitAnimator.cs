@@ -35,20 +35,32 @@ public class UnitAnimator : MonoBehaviour
         animator.SetBool("IsWalking", false);
     }
 
-     private void ShootAction_OnShoot(object sender, ShootAction.OnShootEventArgs e)
+    private void ShootAction_OnShoot(object sender, ShootAction.OnShootEventArgs e)
+{
+    // 1. Safety Check: If the target was destroyed (turned into a ragdoll), stop here.
+    if (e.targetUnit == null) 
     {
-        animator.SetTrigger("Shoot");
-
-        Transform bulletProjectileTransform = 
-            Instantiate(bulletProjectilePrefab, shootPointTransform.position, Quaternion.identity);
-
-        BulletProjectile bulletProjectile = bulletProjectileTransform.GetComponent<BulletProjectile>();
-
-        Vector3 targetUnitShootAtPosition = e.targetUnit.GetWorldPosition();
-
-        targetUnitShootAtPosition.y = shootPointTransform.position.y;
-
-        bulletProjectile.Setup(targetUnitShootAtPosition);
+        return; 
     }
+
+    // 2. Safety Check: If the weapon/shoot point was destroyed, stop here.
+    if (shootPointTransform == null) 
+    {
+        return; 
+    }
+
+    animator.SetTrigger("Shoot");
+
+    Transform bulletProjectileTransform = 
+        Instantiate(bulletProjectilePrefab, shootPointTransform.position, Quaternion.identity);
+
+    BulletProjectile bulletProjectile = bulletProjectileTransform.GetComponent<BulletProjectile>();
+
+    Vector3 targetUnitShootAtPosition = e.targetUnit.GetWorldPosition();
+
+    targetUnitShootAtPosition.y = shootPointTransform.position.y;
+
+    bulletProjectile.Setup(targetUnitShootAtPosition);
+}
 
 }
